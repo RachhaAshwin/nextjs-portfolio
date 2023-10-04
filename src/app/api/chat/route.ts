@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import {chain} from "utils/chain";
-import {Message} from "types/message";
+import {chain} from "../../../../utils/chain";
+import {Message} from "../../../../types/messages";
 import { OpenAIStream, StreamingTextResponse } from 'ai'
-
-export const runtime = 'edge'
 
 
 export async function POST(request: Request) {

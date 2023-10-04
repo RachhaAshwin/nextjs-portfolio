@@ -5,14 +5,16 @@ const subheadingsData = {
         content: (
           <>
           <p>
-        I am a Master's student majoring in Computer Science at Virginia Tech. I have a passion for building, scaling, maintaining, and perusing intelligent systems that have sprung from the fields of Machine Learning, Natural Language Processing, and principles of Software Engineering with their presence in real-world settings.
+        I am a Master&apos;s student majoring in Computer Science at Virginia Tech. I have a passion for building, scaling, maintaining, and perusing intelligent systems that have sprung from the fields of Machine Learning, Natural Language Processing, and principles of Software Engineering with their presence in real-world settings.
         <br></br>
         <br></br>
         I have an extensive work experience at three companies - Unar Labs - Portland Maine, Outreach Corporation Seattle Washington, and Mindbowser Inc Pune, India.
         <br></br>
         <br></br>
         I played a pivotal role most recently at UnarLabs LLC as a Machine Learning Engineer developing a new backend system for
-         which enhanced multisensory information access for visually impaired individuals. My responsibilities included architecting and optimizing data pipelines for tasks like data preprocessing, model training, and inference. I leveraged various frameworks such as OpenCV, PyTorch, Transformers, and FastAPI, along with technologies like Distributed Servers, Docker, GCP, and HuggingFace. This comprehensive approach allowed me to engage in full-stack data science and contribute significantly to the project's success.
+         which enhanced multisensory information access for visually impaired individuals. My responsibilities included architecting and optimizing data pipelines for tasks like data preprocessing, model training, and inference. 
+         I leveraged various frameworks such as OpenCV, PyTorch, Transformers, and FastAPI, along with technologies like Distributed Servers, Docker, GCP, and HuggingFace. 
+         This comprehensive approach allowed me to engage in full-stack data science and contribute significantly to the project&apos;s success.
         <br></br>
         <br></br>
 
@@ -28,7 +30,7 @@ const subheadingsData = {
         content: (
           <>
             <p>
-            ⭐️Master's Thesis in building and evaluating an Adaptive Learning Platform for Computer Science
+            ⭐️Master&apos;s Thesis in building and evaluating an Adaptive Learning Platform for Computer Science
             students utilizing Large Language Models for Explainability. 
             <br></br>
             📜 Academic Research Paper Titled - Explainable AI in Education : Current Trends, Challenges and Opportunities | (IEEE SouthEastCon )
@@ -96,7 +98,7 @@ const subheadingsData = {
             <p>
             <br></br>
             <br></br>
-            🚀 Delivered an Online Inference Solution, templatized for command-line usage, saving Data Scientists' time (3-4 days to 30 minutes) for serving NLP-based models viz. BERT, ROBERTA, and DISTILBERT for topic detection, question detection, action analysis, and sentiment analysis. End product resulted in a deployed application online via Kubernetes manifests on Outreach Staging Environment.
+            🚀 Delivered an Online Inference Solution, templatized for command-line usage, saving Data Scientists&apos; time (3-4 days to 30 minutes) for serving NLP-based models viz. BERT, ROBERTA, and DISTILBERT for topic detection, question detection, action analysis, and sentiment analysis. End product resulted in a deployed application online via Kubernetes manifests on Outreach Staging Environment.
             <br></br>
             <br></br>
             🔧 Wrote PySpark pipelines for ingesting data, preprocessing, tokenization, prediction, and postprocessing of text data.
@@ -157,7 +159,7 @@ const subheadingsData = {
           🤝 Actively collaborated in brainstorming sessions to develop engaging discussions and assignments, enriching the student learning experience.
           <br></br>
           <br></br>
-          🎯 Offered personalized one-on-one consultations to address students' questions and concerns, facilitating their academic success.
+          🎯 Offered personalized one-on-one consultations to address students&apos; questions and concerns, facilitating their academic success.
           <br></br>
           </p>
           </>

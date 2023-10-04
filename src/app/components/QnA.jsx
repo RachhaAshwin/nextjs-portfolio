@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send } from "react-feather";
 import LoadingDots from "./LoadingDots";
-
+import Image from "next/image"
 export default function Home() {
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState([
@@ -56,7 +56,7 @@ export default function Home() {
     <main className=" bg-gray-900 p-4 flex flex-col py-8 px-4 xl:gap-16 sm:py-16 xl:px-16 ">
       <div className="flex flex-col gap-8 w-full items-center flex-grow max-h-full">
         <h1 className=" text-4xl text-transparent font-extralight bg-clip-text bg-gradient-to-r from-violet-800 to-fuchsia-500">
-          Ashwin's Bot
+          Ashwin&apos;s Bot
         </h1>
         <form
           className="rounded-2xl border-purple-700 border-opacity-5  border lg:w-3/4 flex-grow flex flex-col bg-[url('/images/bg.png')] bg-cover max-h-full overflow-clip"
@@ -76,13 +76,16 @@ export default function Home() {
                       key={idx}
                       className="flex gap-2"
                     >
-                      <img
-                        src="images/Ashwin.png"
+                      <Image
+                        src="/images/Ashwin.png"
+                        width={50} // You might need to adjust these dimensions
+                        height={50}
+                        alt="Ashwin's AI assistant"
                         className="h-12 w-12 rounded-full object-cover object-center"
-                        />
+                      />
                       <div className="w-auto max-w-xl break-words bg-white rounded-b-xl rounded-tr-xl text-black p-6 shadow-[0_10px_40px_0px_rgba(0,0,0,0.15)]">
                         <p className="text-sm font-medium text-violet-500 mb-2">
-                          Ashwin's AI assistant
+                          Ashwin&apos;s AI assistant
                         </p>
                         {message.content}
                         {message.links && (
@@ -124,13 +127,16 @@ export default function Home() {
             })}
             {loading && (
               <div ref={lastMessageRef} className="flex gap-2">
-                <img
-                  src="images/Ashwin.png"
-                  className="h-12 w-12 rounded-full object-cover object-center"
-                  />
+                <Image
+                        src="/images/Ashwin.png"
+                        width={50} // You might need to adjust these dimensions
+                        height={50}
+                        alt="Ashwin's AI assistant"
+                        className="h-12 w-12 rounded-full object-cover object-center"
+                      />
                 <div className="w-auto max-w-xl break-words bg-white rounded-b-xl rounded-tr-xl text-black p-6 shadow-[0_10px_40px_0px_rgba(0,0,0,0.15)]">
                   <p className="text-sm font-medium text-violet-500 mb-4">
-                    Ashwin's AI assistant
+                    Ashwin&apos;s AI assistant
                   </p>
                   <LoadingDots />
                 </div>
