@@ -1,6 +1,8 @@
 import React from "react";
 import GithubIcon from "../../../public/github-icon.svg";
 import LinkedinIcon from "../../../public/linkedin-icon.svg";
+import MediumIcon from "../../../public/images/mediumblog.png"
+
 import Link from "next/link";
 import Image from "next/image";
 
@@ -17,17 +19,22 @@ const EmailSection = () => {
         </h5>
         <p className="text-[#ADB7BE] mb-4 max-w-md">
           {" "}
-          I&apos;m currently looking for new opportunities, my inbox is always
+          I&apos;m currently looking for new opportunities in Machine Learning, Software Development and Data Science
+           my inbox is always
           open. Whether you have a question or just want to say hi, I&apos;ll
           try my best to get back to you!
         </p>
         <div className="socials flex flex-row gap-2">
-          <Link href="github.com">
+          <Link href="https://github.com/AshwinRachha">
             <Image src={GithubIcon} alt="Github Icon" />
           </Link>
-          <Link href="linkedin.com">
+          <Link href="https://www.linkedin.com/in/ashwinrachha/">
             <Image src={LinkedinIcon} alt="Linkedin Icon" />
           </Link>
+          <Link href="https://medium.com/@ashwin_rachha">
+            <Image src={MediumIcon} alt="Medium Icon" width={50} height={50}/>
+          </Link>
+
         </div>
       </div>
       <div className="z-10">
@@ -44,7 +51,7 @@ const EmailSection = () => {
               id="email"
               required
               className="bg-[#18191E] border border-[#33353F] placeholder-[#9CA2A9] text-gray-100 text-sm rounded-lg block w-full p-2.5"
-              placeholder="jacob@google.com"
+              placeholder="batman@wayneenterprises.com"
             />
           </div>
           <div className="mb-6">
@@ -59,7 +66,7 @@ const EmailSection = () => {
               id="subject"
               required
               className="bg-[#18191E] border border-[#33353F] placeholder-[#9CA2A9] text-gray-100 text-sm rounded-lg block w-full p-2.5"
-              placeholder="Just saying hi"
+              placeholder="Hello I am Batman"
             />
           </div>
           <div className="mb-6">

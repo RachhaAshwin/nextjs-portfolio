@@ -7,54 +7,54 @@ import { motion, useInView } from "framer-motion";
 const projectsData = [
   {
     id: 1,
-    title: "React Portfolio Website",
-    description: "Project 1 description",
-    image: "/images/projects/1.png",
+    title: "Gurukul",
+    description: "Gurukul Adaptive Learning Platform using Large Language Models. [Python, Pytorch, Transformers, Huggingface, Gradio]",
+    image: "/images/projectsAR/1AR.jpg",
     tag: ["All", "Web"],
     gitUrl: "/",
     previewUrl: "/",
   },
   {
     id: 2,
-    title: "Potography Portfolio Website",
-    description: "Project 2 description",
-    image: "/images/projects/2.png",
+    title: "React Portfolio Website",
+    description: "React and FastAPI based LLM powered website",
+    image: "/images/projectsAR/6AR.png",
     tag: ["All", "Web"],
     gitUrl: "/",
     previewUrl: "/",
   },
   {
     id: 3,
-    title: "E-commerce Application",
-    description: "Project 3 description",
-    image: "/images/projects/3.png",
+    title: "Hemingway",
+    description: "A one stop NLP web application to summarize, analyze and paraphrase text written using Python, Transformers, Streamlit.",
+    image: "/images/projectsAR/2AR.jpg",
     tag: ["All", "Web"],
     gitUrl: "/",
     previewUrl: "/",
   },
   {
     id: 4,
-    title: "Food Ordering Application",
-    description: "Project 4 description",
-    image: "/images/projects/4.png",
-    tag: ["All", "Mobile"],
+    title: "Code Mentor",
+    description: "Designed and implemented a Code Mentor system at Code Mentor, leveraging CodeBERT and CodeT5 models to provide detailed explanations for LeetCode solutions and recommend similar coding challenges based on vector embedding similarity.",
+    image: "/images/projectsAR/3AR.jpg",
+    tag: ["All", "Web"],
     gitUrl: "/",
     previewUrl: "/",
   },
   {
     id: 5,
-    title: "React Firebase Template",
-    description: "Authentication and CRUD operations",
-    image: "/images/projects/5.png",
+    title: "Video2MP3 Distributed System",
+    description: " Built an authenticated service for uploading, downloading and converting media files using microservices architecture facilitated by Pika and RabbitMQ. The application relies on Flask, PyMongo and GridFS to handle interactions with MongoDB.",
+    image: "/images/projectsAR/4AR.jpg",
     tag: ["All", "Web"],
     gitUrl: "/",
     previewUrl: "/",
   },
   {
     id: 6,
-    title: "Full-stack Roadmap",
-    description: "Project 5 description",
-    image: "/images/projects/6.png",
+    title: "VT Search",
+    description: "Developed a web search and summarization system at Virginia Tech utilizing an inverted index for efficient web page querying and Transformers-based summarization for content extraction.",
+    image: "/images/projectsAR/5AR.jpg",
     tag: ["All", "Web"],
     gitUrl: "/",
     previewUrl: "/",
@@ -94,11 +94,6 @@ const ProjectsSection = () => {
           onClick={handleTagChange}
           name="Web"
           isSelected={tag === "Web"}
-        />
-        <ProjectTag
-          onClick={handleTagChange}
-          name="Mobile"
-          isSelected={tag === "Mobile"}
         />
       </div>
       <ul ref={ref} className="grid md:grid-cols-3 gap-8 md:gap-12">
