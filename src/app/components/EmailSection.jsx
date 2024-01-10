@@ -37,7 +37,7 @@ const EmailSection = () => {
 
         </div>
       </div>
-      <div className="z-10">
+      {/* <div className="z-10">
         <form className="flex flex-col">
           <div className="mb-6">
             <label
@@ -90,7 +90,7 @@ const EmailSection = () => {
             Send Message
           </button>
         </form>
-      </div>
+      </div> */}
     </section>
   );
 };

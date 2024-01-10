@@ -23,7 +23,7 @@ export default function Home() {
     ]);
     setMessage("");
     setLoading(true);
-    fetch("/api/chat", {
+    fetch("/api/chatashwin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: message, history: history }),
