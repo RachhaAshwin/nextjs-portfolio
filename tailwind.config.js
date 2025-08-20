@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors");
+const { purple, pink } = require("tailwindcss/colors");
 
 module.exports = {
   content: [
@@ -16,9 +16,9 @@ module.exports = {
       },
     },
     colors: {
-      ...colors,
-      primary: colors.purple,
-      secondary: colors.pink,
+      primary: purple,
+      secondary: pink,
+      // Add other Tailwind colors you use here, e.g. gray, slate, etc.
     },
   },
   plugins: [],
