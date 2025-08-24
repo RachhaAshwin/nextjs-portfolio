@@ -3,10 +3,10 @@ import AboutMenuItem from "./AboutMenuItem";
 import AboutSubheading from "./AboutSubheading";
 import Popup from "./Popup"; // Import the Popup component
 import subheadingsData from "./subheadingsData";
-import personalIcon from "public/images/moebius-triangle.png";
-import educationIcon from "/public/images/upgrade.png";
-import careerIcon from "/public/images/triple-corn.png";
-import chatIcon from "/public/images/chat-icon.png"; // Import your chat icon or use an appropriate path
+const personalIcon = "/images/moebius-triangle.png";
+const educationIcon = "/images/upgrade.png";
+const careerIcon = "/images/triple-corn.png";
+const chatIcon = "/images/chat-icon.png"; // Import your chat icon or use an appropriate path
 import Image from "next/image"; // Import the Image component from Next.js
 
 export default class AboutMenu extends Component {

@@ -16,29 +16,32 @@ const HeroSection = () => {
           className="col-span-8 place-self-center text-center sm:text-left justify-self-start"
         >
           <h1 className="text-white mb-4 text-2xl sm:text-5xl lg:text-5xl lg:leading-normal font-extrabold">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-secondary-600">
+            <span className="text-white" style={{ color: 'white' }}>
               Hello, 
             </span>
             <br></br>
-            <TypeAnimation
-              sequence={[
-                "I am Ashwin",
-                2000,
-                "I am a Machine Learning Engineer",
-                1000,
-                "I am a Full Stack Developer",
-                1000,
-                "I am a Writer",
-                1000,
-                "I am a Joyful Person",
-                1000,
-                "Chat with my AI Avatar!",
-                3000,
-              ]}
-              wrapper="span"
-              speed={50}
-              repeat={Infinity}
-            />
+            <span className="text-white" style={{ color: 'white' }}>
+              <TypeAnimation
+                sequence={[
+                  "I am Ashwin",
+                  2000,
+                  "I am a Machine Learning Engineer",
+                  1000,
+                  "I am a Full Stack Developer",
+                  1000,
+                  "I am a Writer",
+                  1000,
+                  "I am a Joyful Person",
+                  1000,
+                  "Chat with my AI Avatar!",
+                  3000,
+                ]}
+                wrapper="span"
+                speed={50}
+                repeat={Infinity}
+                style={{ color: 'inherit' }}
+              />
+            </span>
           </h1>
           <p className="text-[#ADB7BE] text-base sm:text-lg mb-6 lg:text-xl">
             
@@ -51,7 +54,8 @@ const HeroSection = () => {
               Know me
             </Link>
             <Link
-              href="https://file.coffee/u/Tsj5sGGZjWft1VjuEszjP.pdf"
+              href="/ashwin_rachha_resume.pdf"
+              target="_blank"
               className="px-1 inline-block py-1 w-full sm:w-fit rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 hover:bg-slate-800 text-white mt-3"
             >
               <span className="block bg-[#121212] hover:bg-slate-800 rounded-full px-5 py-2">
