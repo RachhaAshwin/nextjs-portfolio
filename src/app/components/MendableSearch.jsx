@@ -23,7 +23,7 @@ const MyMendableSearchBar = () => {
         <MendableInPlace anon_key={process.env.NEXT_PUBLIC_MENDABLE_ANON_KEY} 
           darkMode={true} 
           accentColor="#123456" 
-          botIcon={<img src="images/Ashwin.png"  width="50" height="50"/>}
+          botIcon={<img src="images/Ashwin.png" alt="Ashwin Rachha" width="50" height="50"/>}
           dialogPlaceholder="Enter your new input message here"
 
         />
