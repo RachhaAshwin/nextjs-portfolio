@@ -1,0 +1,153 @@
+export interface NotionPage {
+  id: string;
+  title: string;
+  url: string;
+  created_time: string;
+  last_edited_time: string;
+  properties: any;
+}
+
+export async function getNotionDatabase(): Promise<NotionPage[]> {
+  try {
+    const response = await fetch('/api/notion?type=database');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data || [];
+    } else {
+      throw new Error(data.error || 'Failed to fetch database');
+    }
+  } catch (error) {
+    console.error("Error fetching Notion database:", error);
+    return [];
+  }
+}
+
+export async function getNotionPage(pageId: string): Promise<any> {
+  try {
+    // Check if we're running on the server (no window object)
+    const isServer = typeof window === 'undefined';
+    
+    if (isServer) {
+      // Server-side: import and use the Notion client directly
+      const { Client } = await import('@notionhq/client');
+      const { NotionToMarkdown } = await import('notion-to-md');
+      
+      const notion = new Client({ auth: process.env.NOTION_API_KEY });
+      const n2m = new NotionToMarkdown({ notionClient: notion });
+      
+      const mdblocks = await n2m.pageToMarkdown(pageId);
+      const mdString = n2m.toMarkdownString(mdblocks);
+      const pageResponse = await notion.pages.retrieve({ page_id: pageId });
+
+      return {
+        markdown: mdString.parent,
+        page: pageResponse,
+      };
+    } else {
+      // Client-side: use the API route
+      const response = await fetch(`/api/notion?type=page&pageId=${pageId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      if (data.success) {
+        return data.data;
+      } else {
+        throw new Error(data.error || 'Failed to fetch page');
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching Notion page:", error);
+    return null;
+  }
+}
+
+// Utility functions for extracting page information
+export function getNotionPageTitle(page: any): string {
+  try {
+    const properties = page.properties || {};
+    
+    // Look for title property
+    const titleProperty = Object.values(properties).find(
+      (prop: any) => prop.type === "title"
+    ) as any;
+    
+    if (titleProperty?.title?.[0]?.plain_text) {
+      return titleProperty.title[0].plain_text;
+    }
+    
+    // Fallback to Name property
+    if (properties.Name?.title?.[0]?.plain_text) {
+      return properties.Name.title[0].plain_text;
+    }
+    
+    // Another fallback
+    if (properties.Title?.title?.[0]?.plain_text) {
+      return properties.Title.title[0].plain_text;
+    }
+    
+    return "Untitled";
+  } catch (error) {
+    console.error("Error extracting title:", error);
+    return "Untitled";
+  }
+}
+
+export function getNotionPageDescription(page: any): string {
+  try {
+    const properties = page.properties || {};
+    
+    // Look for description or summary property
+    const descProperty = properties.Description?.rich_text?.[0]?.plain_text ||
+                        properties.Summary?.rich_text?.[0]?.plain_text ||
+                        properties.Excerpt?.rich_text?.[0]?.plain_text;
+    
+    return descProperty || "";
+  } catch (error) {
+    console.error("Error extracting description:", error);
+    return "";
+  }
+}
+
+export function getNotionPageDate(page: any): string {
+  try {
+    const createdTime = page.created_time;
+    if (createdTime) {
+      return new Date(createdTime).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    return "";
+  } catch (error) {
+    console.error("Error extracting date:", error);
+    return "";
+  }
+}
+
+export function getNotionPageTags(page: any): { id: string; name: string; color: string }[] {
+  try {
+    const properties = page.properties || {};
+    // Look for Tags property first, then fallback to Categories
+    const tagsProperty = properties.Tags?.multi_select || properties.Categories?.multi_select;
+    
+    if (tagsProperty && Array.isArray(tagsProperty)) {
+      return tagsProperty.map((tag: any) => ({
+        id: tag.id || tag.name, // Fallback to name if id is not available
+        name: tag.name,
+        color: tag.color || 'default', // Fallback to 'default' if color is not available
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("Error extracting tags:", error);
+    return [];
+  }
+}
