@@ -28,16 +28,38 @@ export async function getNotionDatabase(): Promise<NotionPage[]> {
 
 export async function getNotionPage(pageId: string): Promise<any> {
   try {
-    const response = await fetch(`/api/notion?type=page&pageId=${pageId}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
+    // Check if we're running on the server (no window object)
+    const isServer = typeof window === 'undefined';
     
-    if (data.success) {
-      return data.data;
+    if (isServer) {
+      // Server-side: import and use the Notion client directly
+      const { Client } = await import('@notionhq/client');
+      const { NotionToMarkdown } = await import('notion-to-md');
+      
+      const notion = new Client({ auth: process.env.NOTION_API_KEY });
+      const n2m = new NotionToMarkdown({ notionClient: notion });
+      
+      const mdblocks = await n2m.pageToMarkdown(pageId);
+      const mdString = n2m.toMarkdownString(mdblocks);
+      const pageResponse = await notion.pages.retrieve({ page_id: pageId });
+
+      return {
+        markdown: mdString.parent,
+        page: pageResponse,
+      };
     } else {
-      throw new Error(data.error || 'Failed to fetch page');
+      // Client-side: use the API route
+      const response = await fetch(`/api/notion?type=page&pageId=${pageId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      if (data.success) {
+        return data.data;
+      } else {
+        throw new Error(data.error || 'Failed to fetch page');
+      }
     }
   } catch (error) {
     console.error("Error fetching Notion page:", error);

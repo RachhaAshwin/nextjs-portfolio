@@ -1,16 +1,12 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
-import { getNotionDatabase, getNotionPage, getNotionPageTitle, getNotionPageDate, getNotionPageDescription } from "../../lib/notion";
-import MarkdownRenderer from "../components/notion/MarkdownRenderer";
+import { getNotionDatabase, getNotionPageTitle, getNotionPageDate, getNotionPageDescription } from "../../lib/notion";
 
 const BlogPage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [selectedPostContent, setSelectedPostContent] = useState(null);
-  const [contentLoading, setContentLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Fetch all blog posts
@@ -58,27 +54,6 @@ const BlogPage = () => {
 
     fetchPosts();
   }, []);
-
-  // Handle post selection
-  const handlePostClick = async (post) => {
-    try {
-      setSelectedPost(post);
-      setContentLoading(true);
-      
-      const postContent = await getNotionPage(post.id);
-      setSelectedPostContent(postContent);
-    } catch (err) {
-      console.error('Error fetching post content:', err);
-      setError('Failed to load post content');
-    } finally {
-      setContentLoading(false);
-    }
-  };
-
-  const handleClosePost = () => {
-    setSelectedPost(null);
-    setSelectedPostContent(null);
-  };
 
   // Animation variants
   const containerVariants = {
@@ -240,66 +215,70 @@ const BlogPage = () => {
                 <motion.article
                   key={post.id}
                   variants={itemVariants}
-                  onClick={() => handlePostClick(post)}
-                  className="group bg-[#1a1a1a] border border-[#33353F] rounded-xl p-8 cursor-pointer 
-                           hover:border-[#9333ea]/50 hover:bg-[#1a1a1a]/80 transition-all duration-300
-                           transform hover:scale-[1.02] hover:shadow-lg hover:shadow-[#9333ea]/10"
+                  className="group"
                 >
-                  <div className="flex flex-col space-y-4">
-                    {/* Date and Reading Time */}
-                    <div className="flex items-center space-x-4 text-sm text-[#6B7280]">
-                      <time>{date}</time>
-                      <span>•</span>
-                      <span>3 min read</span>
-                    </div>
-
-                    {/* Title */}
-                    <h2 className="text-2xl font-bold text-white group-hover:text-[#9333ea] 
-                                 transition-colors duration-200">
-                      {title}
-                    </h2>
-
-                    {/* Description */}
-                    {description && (
-                      <p className="text-[#ADB7BE] leading-relaxed line-clamp-3">
-                        {description}
-                      </p>
-                    )}
-
-                    {/* Tags */}
-                    {tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {tags.slice(0, 4).map((tag, tagIndex) => (
-                          <span
-                            key={tagIndex}
-                            className="px-3 py-1 bg-[#9333ea]/10 border border-[#9333ea]/20 
-                                     text-[#9333ea] text-xs rounded-full font-medium"
-                          >
-                            {tag.name}
-                          </span>
-                        ))}
-                        {tags.length > 4 && (
-                          <span className="px-3 py-1 text-[#6B7280] text-xs">
-                            +{tags.length - 4} more
-                          </span>
-                        )}
+                  <Link 
+                    href={`/blog/${post.id}`}
+                    className="block bg-[#1a1a1a] border border-[#33353F] rounded-xl p-8 
+                             hover:border-[#9333ea]/50 hover:bg-[#1a1a1a]/80 transition-all duration-300
+                             transform hover:scale-[1.02] hover:shadow-lg hover:shadow-[#9333ea]/10"
+                  >
+                    <div className="flex flex-col space-y-4">
+                      {/* Date and Reading Time */}
+                      <div className="flex items-center space-x-4 text-sm text-[#6B7280]">
+                        <time>{date}</time>
+                        <span>•</span>
+                        <span>3 min read</span>
                       </div>
-                    )}
 
-                    {/* Read More Arrow */}
-                    <div className="flex items-center text-[#9333ea] font-medium text-sm 
-                                  group-hover:translate-x-2 transition-transform duration-200">
-                      <span>Read full post</span>
-                      <svg 
-                        className="w-4 h-4 ml-2" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                      </svg>
+                      {/* Title */}
+                      <h2 className="text-2xl font-bold text-white group-hover:text-[#9333ea] 
+                                   transition-colors duration-200">
+                        {title}
+                      </h2>
+
+                      {/* Description */}
+                      {description && (
+                        <p className="text-[#ADB7BE] leading-relaxed line-clamp-3">
+                          {description}
+                        </p>
+                      )}
+
+                      {/* Tags */}
+                      {tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {tags.slice(0, 4).map((tag, tagIndex) => (
+                            <span
+                              key={tagIndex}
+                              className="px-3 py-1 bg-[#9333ea]/10 border border-[#9333ea]/20 
+                                       text-[#9333ea] text-xs rounded-full font-medium"
+                            >
+                              {tag.name}
+                            </span>
+                          ))}
+                          {tags.length > 4 && (
+                            <span className="px-3 py-1 text-[#6B7280] text-xs">
+                              +{tags.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Read More Arrow */}
+                      <div className="flex items-center text-[#9333ea] font-medium text-sm 
+                                    group-hover:translate-x-2 transition-transform duration-200">
+                        <span>Read full post</span>
+                        <svg 
+                          className="w-4 h-4 ml-2" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 </motion.article>
               );
             })}
@@ -319,66 +298,6 @@ const BlogPage = () => {
           )}
         </motion.div>
       </div>
-
-      {/* Post Modal */}
-      <AnimatePresence>
-        {selectedPost && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={handleClosePost}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#121212] rounded-xl max-w-4xl max-h-[90vh] w-full overflow-hidden border border-[#33353F]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-[#33353F] bg-[#1a1a1a]">
-                <div>
-                  <h2 className="text-xl font-bold text-white">
-                    {getNotionPageTitle(selectedPost)}
-                  </h2>
-                  <p className="text-[#6B7280] text-sm mt-1">
-                    {getNotionPageDate(selectedPost)}
-                  </p>
-                </div>
-                <button
-                  onClick={handleClosePost}
-                  className="text-[#ADB7BE] hover:text-white transition-colors p-2 hover:bg-[#33353F] rounded-lg"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="overflow-y-auto max-h-[calc(90vh-100px)] p-6">
-                {contentLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9333ea] mr-3"></div>
-                    <span className="text-[#ADB7BE]">Loading post...</span>
-                  </div>
-                ) : selectedPostContent ? (
-                  <MarkdownRenderer 
-                    markdown={selectedPostContent.markdown} 
-                    pageTitle={getNotionPageTitle(selectedPost)}
-                  />
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-[#ADB7BE]">Failed to load post content</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 };
