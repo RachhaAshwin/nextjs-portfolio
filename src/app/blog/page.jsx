@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { getNotionDatabase, getNotionPage, getNotionPageTitle, getNotionPageDate, getNotionPageDescription } from "../../lib/notion";
-import NotionRenderer from "../components/notion/NotionRenderer";
+import MarkdownRenderer from "../components/notion/MarkdownRenderer";
 
 const BlogPage = () => {
   const [posts, setPosts] = useState([]);
@@ -11,7 +12,6 @@ const BlogPage = () => {
   const [selectedPostContent, setSelectedPostContent] = useState(null);
   const [contentLoading, setContentLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [preloadedContent, setPreloadedContent] = useState(new Map());
 
   // Fetch all blog posts
   useEffect(() => {
@@ -24,7 +24,6 @@ const BlogPage = () => {
           // Filter and sort blog posts
           const blogPosts = pages
             .filter(page => {
-              const status = page.properties?.Status?.select?.name;
               const title = getNotionPageTitle(page);
               
               const hasProperTitle = title && 
@@ -33,16 +32,7 @@ const BlogPage = () => {
                                     !title.startsWith('https://') &&
                                     title.trim().length > 2;
               
-              const isBlogWorthy = status && [
-                'Blogs', 
-                'Daily Learnings', 
-                'Projects',
-                'Done',
-                'Musings',
-                'Published'
-              ].includes(status);
-              
-              return hasProperTitle && (isBlogWorthy || !status);
+              return hasProperTitle;
             })
             .sort((a, b) => new Date(b.created_time) - new Date(a.created_time));
           
@@ -53,7 +43,14 @@ const BlogPage = () => {
         }
       } catch (err) {
         console.error('Error fetching blog posts:', err);
-        setError('Failed to load blog posts');
+        // Check if it's a specific Notion API error
+        if (err.message && err.message.includes('401')) {
+          setError('Invalid Notion API token. Please check your environment variables.');
+        } else if (err.message && err.message.includes('404')) {
+          setError('Database not found. Please check your database ID and permissions.');
+        } else {
+          setError('Failed to load blog posts. Please check your Notion integration.');
+        }
       } finally {
         setLoading(false);
       }
@@ -62,33 +59,12 @@ const BlogPage = () => {
     fetchPosts();
   }, []);
 
-  // Preload content on hover
-  const handlePostHover = async (post) => {
-    if (!preloadedContent.has(post.id)) {
-      try {
-        const postContent = await getNotionPage(post.id);
-        if (postContent) {
-          setPreloadedContent(prev => new Map(prev.set(post.id, postContent)));
-        }
-      } catch (err) {
-        console.log('Preload failed for post:', post.id);
-      }
-    }
-  };
-
   // Handle post selection
   const handlePostClick = async (post) => {
     try {
       setSelectedPost(post);
-      
-      // Check if content is preloaded
-      const preloaded = preloadedContent.get(post.id);
-      if (preloaded) {
-        setSelectedPostContent(preloaded);
-        return;
-      }
-      
       setContentLoading(true);
+      
       const postContent = await getNotionPage(post.id);
       setSelectedPostContent(postContent);
     } catch (err) {
@@ -138,24 +114,76 @@ const BlogPage = () => {
     );
   }
 
-  if (error) {
+    if (error) {
+    const isTokenError = error.includes('Invalid Notion API token') || error.includes('401');
+    const isDatabaseError = error.includes('Database not found') || error.includes('404');
+    
     return (
       <div className="min-h-screen bg-[#121212] pt-20">
         <div className="max-w-4xl mx-auto px-4 py-16">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-white mb-4">Blog</h1>
-            <p className="text-[#ADB7BE] mb-8">Currently in demo mode</p>
-            <div className="bg-[#1a1a1a] border border-[#33353F] rounded-xl p-8 text-left">
-              <h3 className="text-xl font-bold text-white mb-4">🚧 Coming Soon</h3>
-              <p className="text-[#ADB7BE] mb-4">
-                The blog is ready to showcase your Notion content! To enable:
-              </p>
-              <ol className="text-[#ADB7BE] space-y-2 list-decimal list-inside">
-                <li>Configure your Notion integration</li>
-                <li>Add NOTION_TOKEN and NOTION_DATABASE_ID to .env.local</li>
-                <li>Share your database with the integration</li>
-                <li>Restart the development server</li>
-              </ol>
+            <div className="bg-[#1a1a1a] border border-[#33353F] rounded-xl p-8 text-left max-w-2xl mx-auto">
+              <h3 className="text-xl font-bold text-white mb-4">
+                {isTokenError ? '🔑 API Token Issue' : isDatabaseError ? '🗃️ Database Issue' : '🚧 Setup Required'}
+              </h3>
+              
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+                <p className="text-red-400 font-medium mb-2">Error:</p>
+                <p className="text-red-300 text-sm">{error}</p>
+              </div>
+              
+              {isTokenError && (
+                <div className="space-y-4">
+                  <p className="text-[#ADB7BE]">Your API token is invalid. Here&apos;s how to fix it:</p>
+                  <ol className="text-[#ADB7BE] space-y-2 list-decimal list-inside">
+                    <li>Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer" className="text-[#9333ea] hover:underline">notion.so/my-integrations</a></li>
+                    <li>Copy the &quot;Internal Integration Token&quot; (starts with &quot;secret_&quot;)</li>
+                    <li>Update your <code className="bg-[#33353F] px-2 py-1 rounded text-[#06b6d4]">.env.local</code> file</li>
+                    <li>Restart your development server</li>
+                  </ol>
+                </div>
+              )}
+              
+              {isDatabaseError && (
+                <div className="space-y-4">
+                  <p className="text-[#ADB7BE]">Database not found. Please check:</p>
+                  <ol className="text-[#ADB7BE] space-y-2 list-decimal list-inside">
+                    <li>Your database ID is correct in <code className="bg-[#33353F] px-2 py-1 rounded text-[#06b6d4]">.env.local</code></li>
+                    <li>You&apos;ve shared the database with your integration</li>
+                    <li>The database still exists and is accessible</li>
+                  </ol>
+                </div>
+              )}
+              
+              {!isTokenError && !isDatabaseError && (
+                <div className="space-y-4">
+                  <p className="text-[#ADB7BE]">To enable your blog, configure your Notion integration:</p>
+                  <ol className="text-[#ADB7BE] space-y-2 list-decimal list-inside">
+                    <li>Create a Notion integration at <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer" className="text-[#9333ea] hover:underline">notion.so/my-integrations</a></li>
+                    <li>Share your database with the integration</li>
+                    <li>Add environment variables to your <code className="bg-[#33353F] px-2 py-1 rounded text-[#06b6d4]">.env.local</code> file</li>
+                  </ol>
+                </div>
+              )}
+              
+              <div className="mt-4 bg-[#0a0a0a] border border-[#33353F] rounded-lg p-4 font-mono text-sm">
+                <p className="text-green-400"># Notion Integration</p>
+                <p className="text-[#ADB7BE]">NOTION_API_KEY=&quot;secret_your_integration_token&quot;</p>
+                <p className="text-[#ADB7BE]">NOTION_DATABASE_ID=&quot;your_database_id&quot;</p>
+              </div>
+              
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-[#6B7280] text-sm">
+                  Then restart your development server!
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-[#9333ea] hover:bg-[#7c2d92] text-white rounded-lg transition-colors text-sm"
+                >
+                  Retry
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -166,6 +194,16 @@ const BlogPage = () => {
   return (
     <>
       <div className="min-h-screen bg-[#121212] pt-20">
+        {/* Navigation Back */}
+        <div className="max-w-4xl mx-auto px-4 pt-8">
+          <Link href="/" className="inline-flex items-center text-[#9333ea] hover:text-[#7c2d92] transition-colors duration-300">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Portfolio
+          </Link>
+        </div>
+
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -175,11 +213,13 @@ const BlogPage = () => {
           {/* Header */}
           <motion.div variants={itemVariants} className="text-center mb-16">
             <h1 className="text-5xl font-bold text-white mb-4">
-              Blog
+              From My{" "}
+              <span className="bg-gradient-to-r from-[#9333ea] to-[#06b6d4] bg-clip-text text-transparent">
+                Command Center
+              </span>
             </h1>
             <p className="text-[#ADB7BE] text-lg max-w-2xl mx-auto">
-              Thoughts, learnings, and insights from my journey in technology, 
-              design, and building meaningful products.
+              Insights, experiments, and thoughts from my Notion workspace
             </p>
             <div className="mt-6 flex items-center justify-center space-x-4 text-sm text-[#6B7280]">
               <span>{posts.length} posts</span>
@@ -200,7 +240,6 @@ const BlogPage = () => {
                 <motion.article
                   key={post.id}
                   variants={itemVariants}
-                  onMouseEnter={() => handlePostHover(post)}
                   onClick={() => handlePostClick(post)}
                   className="group bg-[#1a1a1a] border border-[#33353F] rounded-xl p-8 cursor-pointer 
                            hover:border-[#9333ea]/50 hover:bg-[#1a1a1a]/80 transition-all duration-300
@@ -324,15 +363,11 @@ const BlogPage = () => {
                   <div className="flex items-center justify-center py-12">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9333ea] mr-3"></div>
                     <span className="text-[#ADB7BE]">Loading post...</span>
-                    <div className="mt-2 text-xs text-[#6B7280] ml-4">
-                      Cached content loads instantly!
-                    </div>
                   </div>
                 ) : selectedPostContent ? (
-                  <NotionRenderer 
-                    recordMap={selectedPostContent} 
+                  <MarkdownRenderer 
+                    markdown={selectedPostContent.markdown} 
                     pageTitle={getNotionPageTitle(selectedPost)}
-                    fallback={selectedPostContent?.fallback || false}
                   />
                 ) : (
                   <div className="text-center py-12">

@@ -554,11 +554,11 @@ Remember: ML models are tools to augment human decision-making, not replace it e
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {notionPages.slice(0, 6).map((page, index) => (
                 <div
+                  key={page.id}
                   onMouseEnter={() => handleCardHover(page)}
                   className="transform transition-all duration-200 hover:scale-105"
                 >
                   <NotionCard
-                    key={page.id}
                     page={page}
                     index={index}
                     onClick={handlePageClick}
