@@ -2,7 +2,31 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { getNotionDatabase, getNotionPageTitle, getNotionPageDate, getNotionPageDescription } from "../../lib/notion";
+import { getNotionDatabase, getNotionPageTitle, getNotionPageDate, getNotionPageDescription, getNotionPageTags } from "../../lib/notion";
+
+// Tag component with Notion-style colors for blog list
+const Tag = ({ name, color }) => {
+  const colorMap = {
+    blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+    brown: 'bg-amber-600/10 border-amber-600/20 text-amber-400',
+    gray: 'bg-gray-500/10 border-gray-500/20 text-gray-400',
+    green: 'bg-green-500/10 border-green-500/20 text-green-400',
+    orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+    pink: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
+    purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+    red: 'bg-red-500/10 border-red-500/20 text-red-400',
+    yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
+    default: 'bg-[#9333ea]/10 border-[#9333ea]/20 text-[#9333ea]'
+  };
+
+  const colorClass = colorMap[color] || colorMap.default;
+
+  return (
+    <span className={`px-3 py-1 border text-xs rounded-full font-medium ${colorClass}`}>
+      {name}
+    </span>
+  );
+};
 
 const BlogPage = () => {
   const [posts, setPosts] = useState([]);
@@ -209,7 +233,7 @@ const BlogPage = () => {
               const title = getNotionPageTitle(post);
               const description = getNotionPageDescription(post);
               const date = getNotionPageDate(post);
-              const tags = post.properties?.Tags?.multi_select || [];
+              const tags = getNotionPageTags(post);
               
               return (
                 <motion.article
@@ -247,14 +271,12 @@ const BlogPage = () => {
                       {/* Tags */}
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
-                          {tags.slice(0, 4).map((tag, tagIndex) => (
-                            <span
-                              key={tagIndex}
-                              className="px-3 py-1 bg-[#9333ea]/10 border border-[#9333ea]/20 
-                                       text-[#9333ea] text-xs rounded-full font-medium"
-                            >
-                              {tag.name}
-                            </span>
+                          {tags.slice(0, 4).map((tag) => (
+                            <Tag
+                              key={tag.id}
+                              name={tag.name}
+                              color={tag.color}
+                            />
                           ))}
                           {tags.length > 4 && (
                             <span className="px-3 py-1 text-[#6B7280] text-xs">

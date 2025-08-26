@@ -131,11 +131,21 @@ export function getNotionPageDate(page: any): string {
   }
 }
 
-export function getNotionPageTags(page: any): string[] {
+export function getNotionPageTags(page: any): { id: string; name: string; color: string }[] {
   try {
     const properties = page.properties || {};
-    const tagsProperty = properties.Tags?.multi_select || properties.Categories?.multi_select || [];
-    return tagsProperty.map((tag: any) => tag.name) || [];
+    // Look for Tags property first, then fallback to Categories
+    const tagsProperty = properties.Tags?.multi_select || properties.Categories?.multi_select;
+    
+    if (tagsProperty && Array.isArray(tagsProperty)) {
+      return tagsProperty.map((tag: any) => ({
+        id: tag.id || tag.name, // Fallback to name if id is not available
+        name: tag.name,
+        color: tag.color || 'default', // Fallback to 'default' if color is not available
+      }));
+    }
+    
+    return [];
   } catch (error) {
     console.error("Error extracting tags:", error);
     return [];

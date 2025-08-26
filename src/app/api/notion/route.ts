@@ -14,16 +14,22 @@ export async function GET(request: Request) {
     if (type === "database") {
       const databaseId = process.env.NOTION_DATABASE_ID!;
       
-      // Basic query without filters first - let client-side handle filtering
+      // Filter to only show items from the "Blogs" lane/status
       const response = await notion.databases.query({
         database_id: databaseId,
+        filter: {
+          property: "Status", // The name of your Status column in Notion
+          select: {
+            equals: "Blogs", // Only items in the "Blogs" lane
+          },
+        },
         sorts: [
           {
             timestamp: "created_time",
             direction: "descending",
           },
         ],
-        page_size: 100, // Get more results for client-side filtering
+        page_size: 100, // Get blog posts efficiently
       });
       
       return NextResponse.json({ success: true, data: response.results });

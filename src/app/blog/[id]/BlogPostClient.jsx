@@ -2,8 +2,33 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { getNotionPageTitle, getNotionPageDate, getNotionPageDescription } from "../../../lib/notion";
+import { getNotionPageTitle, getNotionPageDate, getNotionPageDescription, getNotionPageTags } from "../../../lib/notion";
 import MarkdownRenderer from "../../components/notion/MarkdownRenderer";
+
+// Tag component with Notion-style colors
+const Tag = ({ name, color }) => {
+  // Notion color mapping to Tailwind classes
+  const colorMap = {
+    blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+    brown: 'bg-amber-600/10 border-amber-600/20 text-amber-400',
+    gray: 'bg-gray-500/10 border-gray-500/20 text-gray-400',
+    green: 'bg-green-500/10 border-green-500/20 text-green-400',
+    orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+    pink: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
+    purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+    red: 'bg-red-500/10 border-red-500/20 text-red-400',
+    yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
+    default: 'bg-[#9333ea]/10 border-[#9333ea]/20 text-[#9333ea]'
+  };
+
+  const colorClass = colorMap[color] || colorMap.default;
+
+  return (
+    <span className={`px-3 py-1 border text-xs rounded-full font-medium ${colorClass}`}>
+      {name}
+    </span>
+  );
+};
 
 export default function BlogPostClient({ postContent, postId }) {
   if (!postContent) {
@@ -29,7 +54,7 @@ export default function BlogPostClient({ postContent, postId }) {
   const title = post ? getNotionPageTitle(post) : 'Blog Post';
   const date = post ? getNotionPageDate(post) : '';
   const description = post ? getNotionPageDescription(post) : '';
-  const tags = post?.properties?.Tags?.multi_select || [];
+  const tags = post ? getNotionPageTags(post) : [];
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -142,14 +167,12 @@ export default function BlogPostClient({ postContent, postId }) {
           {/* Tags */}
           {tags.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2">
-              {tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-[#9333ea]/10 border border-[#9333ea]/20 
-                           text-[#9333ea] text-xs rounded-full font-medium"
-                >
-                  {tag.name}
-                </span>
+              {tags.map((tag) => (
+                <Tag
+                  key={tag.id}
+                  name={tag.name}
+                  color={tag.color}
+                />
               ))}
             </div>
           )}
