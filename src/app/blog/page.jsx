@@ -1,30 +1,53 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { getNotionDatabase, getNotionPage, getNotionPageTitle, getNotionPageDate, getNotionPageDescription } from "../../lib/notion";
-import NotionRenderer from "../components/notion/NotionRenderer";
+import { motion } from "framer-motion";
+import { getCachedNotionDatabase, getNotionPageTitle, getNotionPageDate, getNotionPageDescription, getNotionPageTags, warmCache, getCacheStats } from "../../lib/notion";
+import Link from "next/link";
+
+
+
+// Tag component with Notion-style colors for blog list
+const Tag = ({ name, color }) => {
+  const colorMap = {
+    blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+    brown: 'bg-amber-600/10 border-amber-600/20 text-amber-400',
+    gray: 'bg-gray-500/10 border-gray-500/20 text-gray-400',
+    green: 'bg-green-500/10 border-green-500/20 text-green-400',
+    orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+    pink: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
+    purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+    red: 'bg-red-500/10 border-red-500/20 text-red-400',
+    yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
+    default: 'bg-[#9333ea]/10 border-[#9333ea]/20 text-[#9333ea]'
+  };
+
+  const colorClass = colorMap[color] || colorMap.default;
+
+  return (
+    <span className={`px-3 py-1 border text-xs rounded-full font-medium ${colorClass}`}>
+      {name}
+    </span>
+  );
+};
 
 const BlogPage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [selectedPostContent, setSelectedPostContent] = useState(null);
-  const [contentLoading, setContentLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [preloadedContent, setPreloadedContent] = useState(new Map());
 
   // Fetch all blog posts
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         setLoading(true);
-        const pages = await getNotionDatabase();
+        console.log('🔍 Fetching blog posts...');
+        const pages = await getCachedNotionDatabase();
         
         if (pages && pages.length > 0) {
           // Filter and sort blog posts
+          // Since we're filtering server-side for "Blogs" status, just do basic validation
           const blogPosts = pages
             .filter(page => {
-              const status = page.properties?.Status?.select?.name;
               const title = getNotionPageTitle(page);
               
               const hasProperTitle = title && 
@@ -33,21 +56,20 @@ const BlogPage = () => {
                                     !title.startsWith('https://') &&
                                     title.trim().length > 2;
               
-              const isBlogWorthy = status && [
-                'Blogs', 
-                'Daily Learnings', 
-                'Projects',
-                'Done',
-                'Musings',
-                'Published'
-              ].includes(status);
-              
-              return hasProperTitle && (isBlogWorthy || !status);
+              return hasProperTitle;
             })
             .sort((a, b) => new Date(b.created_time) - new Date(a.created_time));
           
           setPosts(blogPosts);
           setError(null);
+          
+          // Warm cache for first 5 posts in background
+          const topPostIds = blogPosts.slice(0, 5).map(post => post.id);
+          if (topPostIds.length > 0) {
+            console.log('🔥 Warming cache for top posts...');
+            warmCache(topPostIds).catch(e => console.warn('Cache warming failed:', e));
+          }
+          
         } else {
           setError('No blog posts found');
         }
@@ -56,53 +78,19 @@ const BlogPage = () => {
         setError('Failed to load blog posts');
       } finally {
         setLoading(false);
+        
+        // Log cache stats
+        setTimeout(() => {
+          const stats = getCacheStats();
+          console.log('📊 Cache stats:', stats);
+        }, 1000);
       }
     };
 
     fetchPosts();
   }, []);
 
-  // Preload content on hover
-  const handlePostHover = async (post) => {
-    if (!preloadedContent.has(post.id)) {
-      try {
-        const postContent = await getNotionPage(post.id);
-        if (postContent) {
-          setPreloadedContent(prev => new Map(prev.set(post.id, postContent)));
-        }
-      } catch (err) {
-        console.log('Preload failed for post:', post.id);
-      }
-    }
-  };
 
-  // Handle post selection
-  const handlePostClick = async (post) => {
-    try {
-      setSelectedPost(post);
-      
-      // Check if content is preloaded
-      const preloaded = preloadedContent.get(post.id);
-      if (preloaded) {
-        setSelectedPostContent(preloaded);
-        return;
-      }
-      
-      setContentLoading(true);
-      const postContent = await getNotionPage(post.id);
-      setSelectedPostContent(postContent);
-    } catch (err) {
-      console.error('Error fetching post content:', err);
-      setError('Failed to load post content');
-    } finally {
-      setContentLoading(false);
-    }
-  };
-
-  const handleClosePost = () => {
-    setSelectedPost(null);
-    setSelectedPostContent(null);
-  };
 
   // Animation variants
   const containerVariants = {
@@ -194,18 +182,20 @@ const BlogPage = () => {
               const title = getNotionPageTitle(post);
               const description = getNotionPageDescription(post);
               const date = getNotionPageDate(post);
-              const tags = post.properties?.Tags?.multi_select || [];
+              const tags = getNotionPageTags(post);
               
               return (
                 <motion.article
                   key={post.id}
                   variants={itemVariants}
-                  onMouseEnter={() => handlePostHover(post)}
-                  onClick={() => handlePostClick(post)}
-                  className="group bg-[#1a1a1a] border border-[#33353F] rounded-xl p-8 cursor-pointer 
-                           hover:border-[#9333ea]/50 hover:bg-[#1a1a1a]/80 transition-all duration-300
-                           transform hover:scale-[1.02] hover:shadow-lg hover:shadow-[#9333ea]/10"
+                  className="group"
                 >
+                  <Link 
+                    href={`/blog/${post.id}`}
+                    className="block bg-[#1a1a1a] border border-[#33353F] rounded-xl p-8 
+                             hover:border-[#9333ea]/50 hover:bg-[#1a1a1a]/80 transition-all duration-300
+                             transform hover:scale-[1.02] hover:shadow-lg hover:shadow-[#9333ea]/10"
+                  >
                   <div className="flex flex-col space-y-4">
                     {/* Date and Reading Time */}
                     <div className="flex items-center space-x-4 text-sm text-[#6B7280]">
@@ -230,14 +220,12 @@ const BlogPage = () => {
                     {/* Tags */}
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {tags.slice(0, 4).map((tag, tagIndex) => (
-                          <span
-                            key={tagIndex}
-                            className="px-3 py-1 bg-[#9333ea]/10 border border-[#9333ea]/20 
-                                     text-[#9333ea] text-xs rounded-full font-medium"
-                          >
-                            {tag.name}
-                          </span>
+                        {tags.slice(0, 4).map((tag) => (
+                          <Tag
+                            key={tag.id}
+                            name={tag.name}
+                            color={tag.color}
+                          />
                         ))}
                         {tags.length > 4 && (
                           <span className="px-3 py-1 text-[#6B7280] text-xs">
@@ -261,6 +249,7 @@ const BlogPage = () => {
                       </svg>
                     </div>
                   </div>
+                  </Link>
                 </motion.article>
               );
             })}
@@ -280,70 +269,6 @@ const BlogPage = () => {
           )}
         </motion.div>
       </div>
-
-      {/* Post Modal */}
-      <AnimatePresence>
-        {selectedPost && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={handleClosePost}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#121212] rounded-xl max-w-4xl max-h-[90vh] w-full overflow-hidden border border-[#33353F]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-[#33353F] bg-[#1a1a1a]">
-                <div>
-                  <h2 className="text-xl font-bold text-white">
-                    {getNotionPageTitle(selectedPost)}
-                  </h2>
-                  <p className="text-[#6B7280] text-sm mt-1">
-                    {getNotionPageDate(selectedPost)}
-                  </p>
-                </div>
-                <button
-                  onClick={handleClosePost}
-                  className="text-[#ADB7BE] hover:text-white transition-colors p-2 hover:bg-[#33353F] rounded-lg"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="overflow-y-auto max-h-[calc(90vh-100px)] p-6">
-                {contentLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9333ea] mr-3"></div>
-                    <span className="text-[#ADB7BE]">Loading post...</span>
-                    <div className="mt-2 text-xs text-[#6B7280] ml-4">
-                      Cached content loads instantly!
-                    </div>
-                  </div>
-                ) : selectedPostContent ? (
-                  <NotionRenderer 
-                    recordMap={selectedPostContent} 
-                    pageTitle={getNotionPageTitle(selectedPost)}
-                    fallback={selectedPostContent?.fallback || false}
-                  />
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-[#ADB7BE]">Failed to load post content</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 };

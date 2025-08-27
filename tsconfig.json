@@ -21,14 +21,18 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "target": "ES2017"
   },
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",
     "**/*.ts",
-    "**/*.tsx"
-, "utils/chain.jsx", "utils/pinecone-client.jsx", "types/messages.ts"  ],
+    "**/*.tsx",
+    "utils/chain.jsx",
+    "utils/pinecone-client.jsx",
+    "types/messages.ts"
+  ],
   "exclude": [
     "node_modules"
   ]

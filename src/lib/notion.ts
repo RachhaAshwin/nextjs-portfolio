@@ -1,4 +1,4 @@
-// Utility functions for Notion integration
+import { cache } from 'react';
 
 export interface NotionPage {
   id: string;
@@ -9,414 +9,548 @@ export interface NotionPage {
   properties: any;
 }
 
-export interface NotionDatabase {
-  results: NotionPage[];
-}
-
-// Convert Notion blocks to Markdown
-export function blocksToMarkdown(blocks: any[]): string {
-  if (!blocks || blocks.length === 0) return '';
+// In-memory cache with TTL
+class MemoryCache {
+  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
   
-  return blocks.map(blockToMarkdown).filter(Boolean).join('\n\n');
-}
-
-function blockToMarkdown(block: any, depth = 0): string {
-  if (!block || !block.type) return '';
-  
-  const type = block.type;
-  const data = block[type] || {};
-  const indent = '  '.repeat(depth);
-  
-  switch (type) {
-    case 'paragraph':
-      return richTextToMarkdown(data.rich_text);
-      
-    case 'heading_1':
-      return `# ${richTextToMarkdown(data.rich_text)}`;
-      
-    case 'heading_2':
-      return `## ${richTextToMarkdown(data.rich_text)}`;
-      
-    case 'heading_3':
-      return `### ${richTextToMarkdown(data.rich_text)}`;
-      
-    case 'bulleted_list_item':
-      const bulletContent = richTextToMarkdown(data.rich_text);
-      const childItems = block.children?.map((child: any) => 
-        blockToMarkdown(child, depth + 1)
-      ).filter(Boolean).join('\n') || '';
-      
-      return `${indent}- ${bulletContent}${childItems ? '\n' + childItems : ''}`;
-      
-    case 'numbered_list_item':
-      const numberedContent = richTextToMarkdown(data.rich_text);
-      const numberedChildItems = block.children?.map((child: any) => 
-        blockToMarkdown(child, depth + 1)
-      ).filter(Boolean).join('\n') || '';
-      
-      return `${indent}1. ${numberedContent}${numberedChildItems ? '\n' + numberedChildItems : ''}`;
-      
-    case 'code':
-      const language = data.language || 'text';
-      const codeText = richTextToMarkdown(data.rich_text);
-      return `\`\`\`${language}\n${codeText}\n\`\`\``;
-      
-    case 'quote':
-      return `> ${richTextToMarkdown(data.rich_text)}`;
-      
-    case 'callout':
-      const icon = data.icon?.emoji || '💡';
-      const calloutText = richTextToMarkdown(data.rich_text);
-      return `> ${icon} **Note:** ${calloutText}`;
-      
-    case 'divider':
-      return '---';
-      
-    case 'image':
-      const imageUrl = data.file?.url || data.external?.url;
-      const caption = richTextToMarkdown(data.caption);
-      return imageUrl ? `![${caption || ''}](${imageUrl})` : '';
-      
-    case 'bookmark':
-      const bookmarkUrl = data.url;
-      const bookmarkCaption = richTextToMarkdown(data.caption);
-      return bookmarkUrl ? `[🔗 ${bookmarkCaption || bookmarkUrl}](${bookmarkUrl})` : '';
-      
-    case 'to_do':
-      const isChecked = data.checked;
-      const todoText = richTextToMarkdown(data.rich_text);
-      return `${indent}- [${isChecked ? 'x' : ' '}] ${todoText}`;
-      
-    case 'toggle':
-      const toggleText = richTextToMarkdown(data.rich_text);
-      const toggleChildren = block.children?.map((child: any) => 
-        blockToMarkdown(child, depth + 1)
-      ).filter(Boolean).join('\n') || '';
-      
-      return `<details>\n<summary>${toggleText}</summary>\n\n${toggleChildren}\n</details>`;
-      
-    default:
-      // Handle unknown block types gracefully
-      if (data.rich_text && data.rich_text.length > 0) {
-        return richTextToMarkdown(data.rich_text);
-      }
-      return `<!-- Unsupported block type: ${type} -->`;
-  }
-}
-
-function richTextToMarkdown(richText: any[]): string {
-  if (!richText || richText.length === 0) return '';
-  
-  return richText.map((text) => {
-    if (!text) return '';
-    
-    let content = text.plain_text || '';
-    const annotations = text.annotations || {};
-    
-    // Apply formatting
-    if (annotations.bold) content = `**${content}**`;
-    if (annotations.italic) content = `*${content}*`;
-    if (annotations.strikethrough) content = `~~${content}~~`;
-    if (annotations.code) content = `\`${content}\``;
-    if (annotations.underline) content = `<u>${content}</u>`;
-    
-    // Handle links
-    if (text.href) {
-      content = `[${content}](${text.href})`;
-    }
-    
-    return content;
-  }).join('');
-}
-
-// Fetch database entries
-export async function getNotionDatabase(): Promise<NotionPage[]> {
-  try {
-    const response = await fetch('/api/notion?type=database', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+  set(key: string, data: any, ttlMinutes: number = 5): void {
+    const ttl = ttlMinutes * 60 * 1000; // Convert to milliseconds
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+  }
+  
+  get(key: string): any | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
     
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch Notion database');
+    if (Date.now() - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      return null;
     }
-
-    return data.data || [];
-  } catch (error) {
-    console.error('Error fetching Notion database:', error);
-    return [];
+    
+    return item.data;
+  }
+  
+  clear(): void {
+    this.cache.clear();
+  }
+  
+  size(): number {
+    return this.cache.size;
   }
 }
 
-// Simple in-memory cache for page content
-const pageCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const requestCache = new Map<string, Promise<any>>(); // Deduplication cache
+// Global cache instances
+const databaseCache = new MemoryCache();
+const pageCache = new MemoryCache();
+const requestCache = new Map<string, Promise<any>>(); // For request deduplication
 
-// Fetch specific page content with caching and deduplication
-export async function getNotionPage(pageId: string): Promise<any> {
-  // Check if request is already in progress
-  if (requestCache.has(pageId)) {
-    return requestCache.get(pageId);
+// Next.js cache wrapper for server-side caching
+export const getCachedNotionDatabase = cache(async (): Promise<any[]> => {
+  console.log('🚀 Server cache: Fetching database');
+  return getNotionDatabase();
+});
+
+export const getCachedNotionPage = cache(async (pageId: string): Promise<any> => {
+  console.log(`🚀 Server cache: Fetching page ${pageId.slice(0, 8)}...`);
+  return getNotionPage(pageId);
+});
+
+// Cache management utilities
+export function clearNotionCache(): void {
+  databaseCache.clear();
+  pageCache.clear();
+  requestCache.clear();
+  console.log('🗑️ Cleared all Notion caches');
+}
+
+export function getCacheStats(): { database: number; pages: number; requests: number } {
+  return {
+    database: databaseCache.size(),
+    pages: pageCache.size(),
+    requests: requestCache.size
+  };
+}
+
+// Smart cache warming with priority and performance tracking
+export async function warmCache(pageIds: string[] = []): Promise<void> {
+  const warmingTimer = new PerformanceTimer(`Cache Warming ${pageIds.length} pages`);
+  console.log(`🔥 Warming cache for ${pageIds.length} pages`);
+  
+  // Priority 1: Warm database cache (fastest)
+  const databaseWarming = getNotionDatabase().catch(e => 
+    console.warn('⚠️  Database cache warming failed:', e.message)
+  );
+  
+  // Priority 2: Warm page caches with smart batching
+  const batchSize = 2; // Reduced batch size for better performance
+  const batches = [];
+  
+  for (let i = 0; i < pageIds.length; i += batchSize) {
+    batches.push(pageIds.slice(i, i + batchSize));
   }
-
-  // Check cache first
-  const cached = pageCache.get(pageId);
-  if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-    return cached.data;
-  }
-
-  // Create and cache the promise to prevent duplicate requests
-  const fetchPromise = fetchPageContent(pageId);
-  requestCache.set(pageId, fetchPromise);
-
-  try {
-    const result = await fetchPromise;
+  
+  console.log(`🔥 Warming ${batches.length} batches of ${batchSize} pages each`);
+  
+  // Sequential batching to avoid overwhelming the API
+  const results = [];
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    console.log(`🔥 Processing batch ${i + 1}/${batches.length}`);
     
-    // Cache successful results
-    if (result) {
-      pageCache.set(pageId, {
-        data: result,
-        timestamp: Date.now()
-      });
+    const batchTimer = new PerformanceTimer(`Batch ${i + 1}`);
+    
+    const batchResults = await Promise.allSettled(
+      batch.map(pageId => {
+        const pageTimer = new PerformanceTimer(`Warming ${pageId.slice(0, 8)}`);
+        return getNotionPage(pageId)
+          .then(result => {
+            pageTimer.end();
+            return { pageId, success: true, result };
+          })
+          .catch(e => {
+            pageTimer.end();
+            console.warn(`⚠️  Page ${pageId.slice(0, 8)} warming failed: ${e.message}`);
+            return { pageId, success: false, error: e.message };
+          });
+      })
+    );
+    
+    batchTimer.end();
+    results.push(...batchResults);
+    
+    // Small delay between batches to be respectful to Notion API
+    if (i < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
     }
-    
+  }
+  
+  // Wait for database warming to complete
+  await databaseWarming;
+  
+  // Performance summary
+  const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+  const failed = results.length - successful;
+  
+  warmingTimer.end();
+  console.log(`🎯 Cache warming complete: ${successful} successful, ${failed} failed`);
+  
+  // Log cache stats
+  const stats = getCacheStats();
+  console.log(`📊 Post-warming cache stats:`, stats);
+}
+
+// Cached database fetching with request deduplication
+export async function getNotionDatabase(): Promise<any[]> {
+  const cacheKey = 'notion-database';
+  
+  // Check memory cache first
+  const cached = databaseCache.get(cacheKey);
+  if (cached) {
+    console.log('📦 Cache hit: Database');
+    return cached;
+  }
+  
+  // Check for ongoing request (deduplication)
+  if (requestCache.has(cacheKey)) {
+    console.log('🔄 Request deduplication: Database');
+    return await requestCache.get(cacheKey)!;
+  }
+  
+  // Create new request
+  const requestPromise = fetchNotionDatabase();
+  requestCache.set(cacheKey, requestPromise);
+  
+  try {
+    const result = await requestPromise;
+    // Cache successful results for 5 minutes
+    databaseCache.set(cacheKey, result, 5);
+    console.log(`💾 Cached database: ${result.length} posts`);
     return result;
   } finally {
-    // Remove from request cache when done
-    requestCache.delete(pageId);
+    requestCache.delete(cacheKey);
   }
 }
 
-// Internal function to actually fetch content
-async function fetchPageContent(pageId: string): Promise<any> {
-  try {
-    const response = await fetch(`/api/notion?type=page&pageId=${pageId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+// Performance utilities (shared with API route)
+class PerformanceTimer {
+  private startTime: number;
+  
+  constructor(private operation: string) {
+    this.startTime = Date.now();
+    console.log(`⏱️  ${operation} - Started`);
+  }
+  
+  end(): number {
+    const duration = Date.now() - this.startTime;
+    console.log(`⏱️  ${this.operation} - Completed in ${duration}ms`);
+    return duration;
+  }
+}
+
+// Request timeout wrapper
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`${operation} timed out after ${timeoutMs}ms`)), timeoutMs)
+  );
+  
+  return Promise.race([promise, timeoutPromise]);
+}
+
+// Request queue for controlling concurrency
+class RequestQueue {
+  private queue: (() => Promise<any>)[] = [];
+  private running: Set<Promise<any>> = new Set();
+  private readonly maxConcurrent = 3; // Max 3 concurrent Notion API calls
+  
+  async add<T>(request: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await request();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      this.processQueue();
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch Notion page');
-    }
-
-    // Handle both normal recordMap and fallback structure
-    if (data.fallback) {
-      return {
-        ...data.data,
-        fallback: true
-      };
+  }
+  
+  private async processQueue(): Promise<void> {
+    if (this.running.size >= this.maxConcurrent || this.queue.length === 0) {
+      return;
     }
     
-    return data.data;
-  } catch (error) {
-    console.error('Error fetching Notion page:', error);
-    return null;
+    const request = this.queue.shift()!;
+    const promise = request();
+    
+    this.running.add(promise);
+    
+    promise
+      .finally(() => {
+        this.running.delete(promise);
+        this.processQueue();
+      });
+  }
+  
+  get stats() {
+    return {
+      queued: this.queue.length,
+      running: this.running.size
+    };
   }
 }
 
-// Extract title from Notion page properties
+const requestQueue = new RequestQueue();
+
+// Optimized server-side Notion client factory
+async function createOptimizedNotionClient() {
+  const { Client } = await import('@notionhq/client');
+  
+  return new Client({ 
+    auth: process.env.NOTION_API_KEY,
+    timeoutMs: 25000, // 25 second timeout
+  });
+}
+
+// Optimized server-side notion-to-md factory  
+async function createOptimizedNotionToMd() {
+  const { NotionToMarkdown } = await import('notion-to-md');
+  const notion = await createOptimizedNotionClient();
+  
+  return new NotionToMarkdown({ 
+    notionClient: notion,
+    config: {
+      parseChildPages: false, // Skip child pages for speed
+    }
+  });
+}
+
+// Internal database fetching function
+async function fetchNotionDatabase(): Promise<any[]> {
+  const isServer = typeof window === 'undefined';
+  
+  if (isServer) {
+    // Server-side: Optimized direct Notion API calls
+    return requestQueue.add(async () => {
+      const timer = new PerformanceTimer('Server Database Query');
+      
+      try {
+        const notion = await createOptimizedNotionClient();
+        const response = await withTimeout(
+          notion.databases.query({
+            database_id: process.env.NOTION_DATABASE_ID!,
+            filter: {
+              property: "Status",
+              select: {
+                equals: "Blogs",
+              },
+            },
+            sorts: [
+              {
+                timestamp: "created_time",
+                direction: "descending",
+              },
+            ],
+            page_size: 25, // Limit for faster queries
+          }),
+          10000, // 10 second timeout
+          'Server database query'
+        );
+        
+        const stats = requestQueue.stats;
+        console.log(`🎯 Request queue: ${stats.queued} queued, ${stats.running} running`);
+        
+        timer.end();
+        return response.results as any[];
+      } catch (error) {
+        timer.end();
+        console.error("❌ Server database fetch failed:", error.message);
+        throw error;
+      }
+    });
+  } else {
+    // Client-side: API route
+    const timer = new PerformanceTimer('Client Database Fetch');
+    
+    try {
+      const baseUrl = window.location.origin;
+      const response = await withTimeout(
+        fetch(`${baseUrl}/api/notion?type=database`),
+        12000, // 12 second timeout for client requests
+        'Client database fetch'
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      timer.end();
+      return data.data || [];
+    } catch (error) {
+      timer.end();
+      console.error("❌ Client database fetch failed:", error.message);
+      return [];
+    }
+  }
+}
+
+// Cached page fetching with request deduplication  
+export async function getNotionPage(pageId: string): Promise<any> {
+  const cacheKey = `notion-page-${pageId}`;
+  
+  // Check memory cache first
+  const cached = pageCache.get(cacheKey);
+  if (cached) {
+    console.log(`📦 Cache hit: Page ${pageId.slice(0, 8)}...`);
+    return cached;
+  }
+  
+  // Check for ongoing request (deduplication)
+  if (requestCache.has(cacheKey)) {
+    console.log(`🔄 Request deduplication: Page ${pageId.slice(0, 8)}...`);
+    return await requestCache.get(cacheKey)!;
+  }
+  
+  // Create new request
+  const requestPromise = fetchNotionPage(pageId);
+  requestCache.set(cacheKey, requestPromise);
+  
+  try {
+    const result = await requestPromise;
+    if (result) {
+      // Cache successful results for 10 minutes (longer for individual pages)
+      pageCache.set(cacheKey, result, 10);
+      console.log(`💾 Cached page: ${pageId.slice(0, 8)}...`);
+    }
+    return result;
+  } finally {
+    requestCache.delete(cacheKey);
+  }
+}
+
+// Optimized server-side markdown processing
+async function optimizedServerMarkdownConversion(pageId: string): Promise<string> {
+  const timer = new PerformanceTimer(`Server Markdown ${pageId.slice(0, 8)}`);
+  
+  try {
+    const n2m = await createOptimizedNotionToMd();
+    
+    const mdblocks = await withTimeout(
+      n2m.pageToMarkdown(pageId), 
+      15000, // 15 seconds max for markdown conversion
+      'Server markdown conversion'
+    );
+    
+    const mdString = n2m.toMarkdownString(mdblocks);
+    timer.end();
+    
+    return mdString.parent;
+  } catch (error) {
+    timer.end();
+    console.error(`❌ Server markdown conversion failed for ${pageId.slice(0, 8)}: ${error.message}`);
+    throw error;
+  }
+}
+
+// Internal page fetching function
+async function fetchNotionPage(pageId: string): Promise<any> {
+  const isServer = typeof window === 'undefined';
+  
+  if (isServer) {
+    // Server-side: Optimized direct Notion API calls with queuing
+    return requestQueue.add(async () => {
+      const timer = new PerformanceTimer(`Server Page ${pageId.slice(0, 8)}`);
+      
+      try {
+        // Use Promise.allSettled for graceful partial failure handling
+        const [markdownResult, pageResult] = await Promise.allSettled([
+          optimizedServerMarkdownConversion(pageId),
+          withTimeout(
+            createOptimizedNotionClient().then(notion => 
+              notion.pages.retrieve({ page_id: pageId })
+            ),
+            8000, // 8 seconds for page metadata
+            'Server page metadata'
+          )
+        ]);
+        
+        const stats = requestQueue.stats;
+        console.log(`🎯 Request queue: ${stats.queued} queued, ${stats.running} running`);
+        
+        // Handle partial failures gracefully
+        const markdown = markdownResult.status === 'fulfilled' ? markdownResult.value : '';
+        const page = pageResult.status === 'fulfilled' ? pageResult.value : null;
+        
+        if (markdownResult.status === 'rejected') {
+          console.warn(`⚠️  Server markdown failed: ${markdownResult.reason.message}`);
+        }
+        
+        if (pageResult.status === 'rejected') {
+          console.warn(`⚠️  Server page metadata failed: ${pageResult.reason.message}`);
+        }
+        
+        timer.end();
+        
+        return {
+          markdown,
+          page,
+          partial: markdownResult.status === 'rejected' || pageResult.status === 'rejected'
+        };
+      } catch (error) {
+        timer.end();
+        console.error(`❌ Server page fetch failed for ${pageId.slice(0, 8)}: ${error.message}`);
+        throw error;
+      }
+    });
+  } else {
+    // Client-side: Optimized API route with timeout
+    const timer = new PerformanceTimer(`Client Page ${pageId.slice(0, 8)}`);
+    
+    try {
+      const baseUrl = window.location.origin;
+      const response = await withTimeout(
+        fetch(`${baseUrl}/api/notion?type=page&pageId=${pageId}`),
+        20000, // 20 second timeout for client requests (longer because includes markdown)
+        'Client page fetch'
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      timer.end();
+      return data.data;
+    } catch (error) {
+      timer.end();
+      console.error(`❌ Client page fetch failed for ${pageId.slice(0, 8)}: ${error.message}`);
+      return null;
+    }
+  }
+}
+
+// Utility functions for extracting page information
 export function getNotionPageTitle(page: any): string {
   try {
     const properties = page.properties || {};
+    const titleProperty = Object.values(properties).find(
+      (prop: any) => prop.type === "title"
+    ) as any;
     
-    // First, try to find any property with type 'title' (this is the most reliable)
-    for (const [key, property] of Object.entries(properties)) {
-      const prop = property as any;
-      if (prop.type === 'title' && prop.title && prop.title.length > 0) {
-        const titleText = prop.title[0]?.plain_text || prop.title[0]?.text?.content;
-        if (titleText && titleText.trim() !== '') {
-          return titleText.trim();
-        }
-      }
+    if (titleProperty?.title?.[0]?.plain_text) {
+      return titleProperty.title[0].plain_text;
     }
     
-    // Fallback: try common property names
-    const possibleTitleKeys = ['Title', 'Name', 'title', 'name', 'Page'];
-    for (const key of possibleTitleKeys) {
-      if (properties[key]) {
-        const prop = properties[key] as any;
-        if (prop.title && prop.title.length > 0) {
-          const titleText = prop.title[0]?.plain_text || prop.title[0]?.text?.content;
-          if (titleText && titleText.trim() !== '') {
-            return titleText.trim();
-          }
-        }
-        // Also try rich_text properties that might be used as titles
-        if (prop.rich_text && prop.rich_text.length > 0) {
-          const titleText = prop.rich_text[0]?.plain_text || prop.rich_text[0]?.text?.content;
-          if (titleText && titleText.trim() !== '') {
-            return titleText.trim();
-          }
-        }
-      }
+    // Fallback to Name property
+    if (properties.Name?.title?.[0]?.plain_text) {
+      return properties.Name.title[0].plain_text;
     }
     
-    // Try to extract from URL if it looks like a readable slug
-    if (page.url && typeof page.url === 'string') {
-      const urlParts = page.url.split('/').pop();
-      if (urlParts && !urlParts.includes('-') && urlParts.length > 10) {
-        // Skip if it looks like a UUID
-        return 'Untitled';
-      } else if (urlParts && urlParts.includes('-')) {
-        // Try to make a readable title from URL slug
-        const readableTitle = urlParts
-          .split('-')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ')
-          .replace(/^\d+\s*/, ''); // Remove leading numbers
-        if (readableTitle.length > 3) {
-          return readableTitle;
-        }
-      }
+    // Another fallback
+    if (properties.Title?.title?.[0]?.plain_text) {
+      return properties.Title.title[0].plain_text;
     }
     
-    // Last resort: try to get the page title from the page object itself
-    if (page.title && typeof page.title === 'string') {
-      return page.title;
-    }
-    
-    // If we have an object title
-    if (page.title && Array.isArray(page.title) && page.title.length > 0) {
-      const titleText = page.title[0]?.plain_text || page.title[0]?.text?.content;
-      if (titleText) {
-        return titleText;
-      }
-    }
-    
-    return 'Untitled';
+    return "Untitled";
   } catch (error) {
-    console.error('Error extracting title:', error, page);
-    return 'Untitled';
+    console.error("Error extracting title:", error);
+    return "Untitled";
   }
 }
 
-// Extract plain text from Notion rich text
-export function getNotionRichText(richText: any[]): string {
-  try {
-    if (!richText || !Array.isArray(richText)) {
-      return '';
-    }
-    
-    return richText
-      .map((text) => {
-        // Handle different rich text formats
-        if (text.plain_text) {
-          return text.plain_text;
-        }
-        if (text.text && text.text.content) {
-          return text.text.content;
-        }
-        if (typeof text === 'string') {
-          return text;
-        }
-        return '';
-      })
-      .filter(Boolean)
-      .join('');
-  } catch (error) {
-    console.error('Error extracting rich text:', error);
-    return '';
-  }
-}
-
-// Extract description from various possible property types
 export function getNotionPageDescription(page: any): string {
   try {
     const properties = page.properties || {};
     
-    // Try different possible description property names
-    const possibleDescKeys = ['Description', 'Content', 'Summary', 'description', 'content', 'summary', 'Abstract', 'Excerpt'];
+    // Look for description or summary property
+    const descProperty = properties.Description?.rich_text?.[0]?.plain_text ||
+                        properties.Summary?.rich_text?.[0]?.plain_text ||
+                        properties.Excerpt?.rich_text?.[0]?.plain_text;
     
-    for (const key of possibleDescKeys) {
-      if (properties[key]) {
-        const prop = properties[key] as any;
-        
-        // Rich text property
-        if (prop.type === 'rich_text' && prop.rich_text) {
-          const text = getNotionRichText(prop.rich_text);
-          if (text && text.trim() !== '') {
-            return text.trim();
-          }
-        }
-        
-        // Text property (fallback)
-        if (prop.rich_text) {
-          const text = getNotionRichText(prop.rich_text);
-          if (text && text.trim() !== '') {
-            return text.trim();
-          }
-        }
-        
-        // Plain text property
-        if (typeof prop.text === 'string' && prop.text.trim() !== '') {
-          return prop.text.trim();
-        }
-      }
-    }
-    
-    return '';
+    return descProperty || "";
   } catch (error) {
-    console.error('Error extracting description:', error);
-    return '';
+    console.error("Error extracting description:", error);
+    return "";
   }
 }
 
-// Format Notion date
-export function formatNotionDate(dateString: string): string {
-  try {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return dateString;
-  }
-}
-
-// Extract any date from Notion page (created_time, last_edited_time, or date properties)
 export function getNotionPageDate(page: any): string {
   try {
-    // Try different date sources
-    if (page.created_time) {
-      return formatNotionDate(page.created_time);
+    const createdTime = page.created_time;
+    if (createdTime) {
+      return new Date(createdTime).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
     }
-    if (page.last_edited_time) {
-      return formatNotionDate(page.last_edited_time);
-    }
-    
-    // Try to find date properties
-    const properties = page.properties || {};
-    for (const [key, property] of Object.entries(properties)) {
-      if ((property as any)?.type === 'created_time' && (property as any)?.created_time) {
-        return formatNotionDate((property as any).created_time);
-      }
-      if ((property as any)?.type === 'date' && (property as any)?.date?.start) {
-        return formatNotionDate((property as any).date.start);
-      }
-    }
-    
-    return 'No date available';
+    return "";
   } catch (error) {
-    console.error('Error extracting date:', error);
-    return 'No date available';
+    console.error("Error extracting date:", error);
+    return "";
+  }
+}
+
+export function getNotionPageTags(page: any): { id: string; name: string; color: string }[] {
+  try {
+    const tagsProperty = page?.properties?.Tags; // Assumes your property is named "Tags"
+    if (tagsProperty?.type === 'multi_select') {
+      return tagsProperty.multi_select.map((tag: any) => ({
+        id: tag.id,
+        name: tag.name,
+        color: tag.color,
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error('Error extracting tags:', error);
+    return [];
   }
 }
